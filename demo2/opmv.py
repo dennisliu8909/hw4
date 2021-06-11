@@ -15,7 +15,7 @@ THRESHOLD = (0, 27) # Grayscale threshold for dark things...
 #设置是否使用img.binary()函数进行图像分割
 BINARY_VISIBLE = True # 首先执行二进制操作，以便您可以看到正在运行的线性回归...虽然可能会降低FPS。
 
-import sensor, image, time
+import pyb, sensor, image, time, math
 
 sensor.reset()
 sensor.set_pixformat(sensor.GRAYSCALE)
