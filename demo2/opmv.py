@@ -10,7 +10,7 @@
 # 这会破坏线条拟合.
 
 #设置阈值，（0，100）检测黑色线
-THRESHOLD = (0, 27) # Grayscale threshold for dark things...
+THRESHOLD = (0,110) # Grayscale threshold for dark things...
 
 #设置是否使用img.binary()函数进行图像分割
 BINARY_VISIBLE = True # 首先执行二进制操作，以便您可以看到正在运行的线性回归...虽然可能会降低FPS。
@@ -41,14 +41,44 @@ while(True):
     # 函数返回回归后的线段对象line，有x1(), y1(), x2(), y2(), length(), theta(), rho(), magnitude()参数。
     # x1 y1 x2 y2分别代表线段的两个顶点坐标，length是线段长度，theta是线段的角度。
     # magnitude表示线性回归的效果，它是（0，+∞）范围内的一个数字，其中0代表一个圆。如果场景线性回归的越好，这个值越大。
-    line = img.get_regression([(255,255) if BINARY_VISIBLE else THRESHOLD])
+    line = img.get_regression([(255,255) if BINARY_VISIBLE else THRESHOLD], False, (20, 0, 120, 20))
 
     if (line): img.draw_line(line.line(), color = 127)
     theta = line.theta() if(line) else 0
     rho = line.rho() if(line) else 0
-    rpc_str = ("/goline/run %f %f \n") %(theta, rho)
-    #print(rpc_str)
-    uart.write(("/goStraight/run -100 \n").encode())
+    #print("FPS %f, theta = %f, rho = %f, mag = %s\n" % (clock.fps(), theta, rho, str(line.magnitude()) if (line) else "N/A"))
+    #uart.write("FPS %f, theta = %f, rho = %f\n" % (clock.fps(), theta, rho))
+    if (rho < 0) :
+        theta = abs(theta - 180)
+
+    mid_approx = abs(rho) / math.cos(math.radians(theta))
+    if (line) :
+        diff_dis = mid_approx - 80
+        if (abs(diff_dis) <= 30 and diff_dis < 0 and theta > 60) :  # turn right
+            uart.write(("/turn/run 70 -0.3 \n").encode())
+            print("right")
+        elif(abs(diff_dis) <= 30 and diff_dis > 0 and theta > 60) : # turn left
+            uart.write(("/turn/run 70 0.3 \n").encode())
+            print("left")
+        elif (abs(diff_dis) <= 30) :                             # go straight
+            uart.write(("/goStraight/run -100 \n").encode())
+            print("straight")
+        elif (diff_dis > 0) :                                    # turn left
+            uart.write(("/turn/run 70 0.3 \n").encode())
+            print("left")
+        elif (diff_dis < 0) :                                    # turn right
+            uart.write(("/turn/run 70 -0.3 \n").encode())
+            print("right")
+        else :
+            uart.write(("/stop/run \n").encode())
+            #print("stop\n")
+        time.sleep(0.07)
+        print("FPS %f, theta = %f, diff_dis = %f, mid_approx = %f\n" % (clock.fps(), theta, diff_dis, mid_approx))
+    else :
+        uart.write(("/stop/run \n").encode())
+        print("stop\n")
+        time.sleep(0.07)
+
 
 
 # About negative rho values:
